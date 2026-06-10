@@ -1,9 +1,14 @@
 from fastapi import FastAPI, UploadFile, File
 from parser import extract_pdf_text
-from ai_engine import ask_ai, extract_bank_data, fill_template
+from pydantic import BaseModel
+from ai_engine import ask_ai, extract_bank_data, fill_template, ask_document_question
 import os
+import json
 
 app = FastAPI()
+class QuestionRequest(BaseModel):
+    document_text: str
+    question: str
 
 UPLOAD_FOLDER = "uploads"
 
@@ -57,7 +62,30 @@ async def generate_draft(file: UploadFile = File(...)):
 
     draft = fill_template(extracted_text)
 
+    try:
+        draft_json = json.loads(draft)
+
+        return {
+            "filename": file.filename,
+            "draft": draft_json
+        }
+
+    except Exception as e:
+
+        return {
+            "filename": file.filename,
+            "draft": draft,
+            "error": str(e)
+        }
+@app.post("/ask-question")
+def ask_question(data: QuestionRequest):
+
+    answer = ask_document_question(
+        data.document_text,
+        data.question
+    )
+
     return {
-        "filename": file.filename,
-        "draft": draft
+        "question": data.question,
+        "answer": answer
     }
