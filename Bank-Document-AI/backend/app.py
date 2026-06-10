@@ -7,8 +7,8 @@ import json
 
 app = FastAPI()
 class QuestionRequest(BaseModel):
-    document_text: str
     question: str
+DOCUMENT_TEXT = ""
 
 UPLOAD_FOLDER = "uploads"
 
@@ -50,8 +50,10 @@ async def extract_data(file: UploadFile = File(...)):
         "filename": file.filename,
         "ai_result": ai_result
     }
-@app.post("/generate-draft")
-async def generate_draft(file: UploadFile = File(...)):
+@app.post("/process-document")
+async def process_document(file: UploadFile = File(...)):
+
+    global DOCUMENT_TEXT
 
     file_path = os.path.join(UPLOAD_FOLDER, file.filename)
 
@@ -59,6 +61,8 @@ async def generate_draft(file: UploadFile = File(...)):
         buffer.write(await file.read())
 
     extracted_text = extract_pdf_text(file_path)
+
+    DOCUMENT_TEXT = extracted_text
 
     draft = fill_template(extracted_text)
 
@@ -80,8 +84,10 @@ async def generate_draft(file: UploadFile = File(...)):
 @app.post("/ask-question")
 def ask_question(data: QuestionRequest):
 
+    global DOCUMENT_TEXT
+
     answer = ask_document_question(
-        data.document_text,
+        DOCUMENT_TEXT,
         data.question
     )
 
